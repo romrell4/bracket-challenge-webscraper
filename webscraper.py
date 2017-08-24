@@ -9,22 +9,25 @@ from bs4 import BeautifulSoup
 
 import properties
 
+BASE_URL = "https://3vxcifd2rc.execute-api.us-west-2.amazonaws.com/PROD/{}"
+HEADERS = {"Token": properties.TOKEN}
+
 PLAYER_DICT = {}
 
 def load_players():
-    response = requests.get("https://3vxcifd2rc.execute-api.us-west-2.amazonaws.com/PROD/players", headers = {"Token": properties.TOKEN})
+    response = requests.get(BASE_URL.format("players"), headers = HEADERS)
     for player in response.json():
         PLAYER_DICT[player["name"]] = player["player_id"]
 
-def generate_tourney(url):
-    round = scrape(url)
+def scape_bracket(url):
+    round = scrape_first_round(url)
     rounds = generate_empty_rounds(round)
-    tournament = {"rounds": rounds}
-    json_tournament = json.dumps(tournament, indent = 4, sort_keys = True)
+    bracket = {"rounds": rounds}
     with open("tournament.json", "w") as f:
-        f.write(json_tournament)
+        f.write(json.dumps(bracket, indent = 4, sort_keys = True))
+    return bracket
 
-def scrape(url):
+def scrape_first_round(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, "lxml")
     table = soup.find("table", id = "scoresDrawTable")
@@ -111,11 +114,14 @@ class MatchInfo:
         return PLAYER_DICT[player_name] if player_name in PLAYER_DICT else None
 
 parser = argparse.ArgumentParser()
+parser.add_argument("-t", "--tournament_id")
 parser.add_argument("-u", "--url")
 args = parser.parse_args()
 
 load_players()
 if args.url is not None:
-    generate_tourney(args.url)
+    bracket = scape_bracket(args.url)
+    if args.tournament_id is not None:
+        requests.post(BASE_URL.format("tournaments/{}/brackets", headers = HEADERS, json = bracket))
 else:
     prompt_tourney()
