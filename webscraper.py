@@ -91,22 +91,20 @@ class MatchInfo:
     def __init__(self, round, position, player1_name = None, seed1 = None, player2_name = None, seed2 = None):
         self.round = round
         self.position = position
-        if player1_name is not None and player1_name != "":
-            player1_id = self.find_id(player1_name)
-            if player1_id is not None:
-                self.player1_id = player1_id
+        self.set_player_info(player1_name, seed1, True)
+        self.set_player_info(player2_name, seed2, False)
+
+    def set_player_info(self, name, seed, first_player):
+        position = "1" if first_player else "2"
+        if name is not None and name != "":
+            id = self.find_id(name)
+            if id is not None:
+                setattr(self, "player{}_id".format(position), id)
             else:
-                self.player1_name = player1_name
-        if seed1 is not None and seed1 != "":
-            self.seed1 = int(seed1)
-        if player2_name is not None and player2_name != "":
-            player2_id = self.find_id(player2_name)
-            if player2_id is not None:
-                self.player2_id = player2_id
-            else:
-                self.player2_name = player2_name
-        if seed2 is not None and seed2 != "":
-            self.seed2 = int(seed2)
+                setattr(self, "player{}_name".format(position), name)
+        if seed is not None and seed != "":
+            setattr(self, "seed{}".format(position), seed)
+
 
     @staticmethod
     def find_id(player_name):
