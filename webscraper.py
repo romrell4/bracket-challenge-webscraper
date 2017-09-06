@@ -122,6 +122,7 @@ load_players()
 if args.url is not None:
     bracket = scape_bracket(args.url)
     if args.tournament_id is not None:
-        requests.post(BASE_URL.format("tournaments/{}/brackets", headers = HEADERS, json = bracket))
+        response = requests.post(BASE_URL.format("tournaments/{}/brackets".format(args.tournament_id)), headers = HEADERS, json = bracket)
+        print(response.status_code, response.text)
 else:
     prompt_tourney()
