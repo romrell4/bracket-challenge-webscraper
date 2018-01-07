@@ -21,7 +21,7 @@ def load_players():
     for player in response.json():
         PLAYER_DICT[player["name"]] = player["player_id"]
 
-def scape_bracket(url):
+def scrape_bracket(url):
     round = scrape_first_round(url)
     rounds = generate_empty_rounds(round)
     bracket = {"rounds": rounds}
@@ -115,16 +115,24 @@ class MatchInfo:
     def find_id(player_name):
         return PLAYER_DICT[player_name] if player_name in PLAYER_DICT else None
 
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-t", "--tournament_id", required = True)
-parser.add_argument("-u", "--url", required = True) # TODO: Decide if we ever want these to be optional
+parser.add_argument("-u", "--url")
+parser.add_argument("-i", "--image_url")
 args = parser.parse_args()
 
 load_players()
 if args.url is not None:
-    bracket = scape_bracket(args.url)
-    if args.tournament_id is not None:
-        response = requests.post(BASE_URL.format("tournaments/{}/brackets".format(args.tournament_id)), headers = HEADERS, json = bracket)
-        print(response.status_code, response.text)
+    # Populate the rounds of the bracket
+    bracket = scrape_bracket(args.url)
+
+    # If they provided a URL, add it
+    if args.image_url is not None:
+        bracket["image_url"] = args.image_url
+
+    # Save the bracket to the database
+    response = requests.post(BASE_URL.format("tournaments/{}/brackets".format(args.tournament_id)), headers = HEADERS, json = bracket)
+    print(response.status_code, response.text)
 else:
     prompt_tourney()
