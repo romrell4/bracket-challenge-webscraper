@@ -114,8 +114,8 @@ class MatchInfo:
         return PLAYER_DICT[player_name] if player_name in PLAYER_DICT else None
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-t", "--tournament_id")
-parser.add_argument("-u", "--url")
+parser.add_argument("-t", "--tournament_id", required = True)
+parser.add_argument("-u", "--url", required = True) # TODO: Decide if we ever want these to be optional
 args = parser.parse_args()
 
 load_players()
