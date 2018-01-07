@@ -119,17 +119,12 @@ class MatchInfo:
 parser = argparse.ArgumentParser()
 parser.add_argument("-t", "--tournament_id", required = True)
 parser.add_argument("-u", "--url")
-parser.add_argument("-i", "--image_url")
 args = parser.parse_args()
 
 load_players()
 if args.url is not None:
     # Populate the rounds of the bracket
     bracket = scrape_bracket(args.url)
-
-    # If they provided a URL, add it
-    if args.image_url is not None:
-        bracket["image_url"] = args.image_url
 
     # Save the bracket to the database
     response = requests.post(BASE_URL.format("tournaments/{}/brackets".format(args.tournament_id)), headers = HEADERS, json = bracket)
