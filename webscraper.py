@@ -56,42 +56,6 @@ def get_name(tag):
     link = tag.find("a", "scores-draw-entry-box-players-item")
     return link['data-ga-label'] if link is not None else None
 
-def prompt_tourney():
-    round = []
-    position = 1
-    seed_pattern = re.compile("\((\d+)\)$")
-    while True:
-        player1 = input("Player 1: ")
-        if player1 == "quit":
-            break
-        player2 = input("Player 2: ")
-        player1_name, seed1 = split(seed_pattern, player1)
-        player2_name, seed2 = split(seed_pattern, player2)
-        round.append(Match(1, position, player1_name, player2_name, seed1, seed2).__dict__)
-        position += 1
-    rounds = generate_empty_rounds(round)
-    return {"rounds": rounds}
-
-def generate_empty_rounds(round):
-    match_count = len(round)
-    rounds = [round]
-    total_rounds = int(math.log(match_count, 2))
-    for current_round in range(1, total_rounds + 1):
-        match_list = []
-        total_matches = int(match_count / math.pow(2, current_round))
-        for match_number in range(total_matches):
-            match_list.append(Match(current_round + 1, match_number + 1).__dict__)
-        rounds.append(match_list)
-    return rounds
-
-def split(pattern, player):
-    match = pattern.search(player)
-    if match is None:
-        return player, None
-    else:
-        return player[:match.start()].strip(), match.group(1)
-
-
 class Match:
     def __init__(self, round, position, player1_name = None, player2_name = None, seed1 = None, seed2 = None, winner_name = None):
         self.round = round
@@ -119,30 +83,32 @@ class Match:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-u", "--url")
-    parser.add_argument("-t", "--tournament_id")
+    parser.add_argument("-t", "--tournament_id", required = True)
     args = parser.parse_args()
 
-    bracket = scrape_bracket(args.url) if args.url is not None else prompt_tourney()
-    if args.tournament_id is not None:
-        response = requests.get(BASE_URL.format("tournaments/{}".format(args.tournament_id)), headers = HEADERS)
+    response = requests.get(BASE_URL.format("tournaments/{}".format(args.tournament_id)), headers = HEADERS)
+    assert response.status_code == 200
+    tournament = response.json()
+
+    draws_url = tournament.get("draws_url")
+    if draws_url is None:
+        print("Tournament does not have a draws_url yet. Unable to update.")
+        exit()
+
+    bracket = scrape_bracket(draws_url)
+
+    master_bracket_id = tournament.get("master_bracket_id")
+    if master_bracket_id is not None:
+        # Get the master bracket
+        response = requests.get(BASE_URL.format("tournaments/{}/brackets/{}".format(args.tournament_id, master_bracket_id)), headers = HEADERS)
         assert response.status_code == 200
-        tournament = response.json()
+        master_bracket = response.json()
 
-        master_bracket_id = tournament["master_bracket_id"] if "master_bracket_id" in tournament else None
-        if master_bracket_id is not None:
-            # Get the master bracket
-            response = requests.get(BASE_URL.format("tournaments/{}/brackets/{}".format(args.tournament_id, master_bracket_id)), headers = HEADERS)
-            assert response.status_code == 200
-            master_bracket = response.json()
-
-            # Update the master bracket
-            master_bracket["rounds"] = bracket["rounds"]
-            response = requests.put(BASE_URL.format("tournaments/{}/brackets/{}".format(args.tournament_id, tournament["master_bracket_id"])), headers = HEADERS, json = master_bracket)
-            print(response.status_code, response.text)
-        else:
-            # Create the master bracket
-            response = requests.post(BASE_URL.format("tournaments/{}/brackets".format(args.tournament_id)), headers = HEADERS, json = bracket)
-            print(response.status_code, response.text)
+        # Update the master bracket
+        master_bracket["rounds"] = bracket["rounds"]
+        response = requests.put(BASE_URL.format("tournaments/{}/brackets/{}".format(args.tournament_id, tournament["master_bracket_id"])), headers = HEADERS, json = master_bracket)
+        print(response.status_code, response.text)
     else:
-        print(json.dumps(bracket, indent = 4))
+        # Create the master bracket
+        response = requests.post(BASE_URL.format("tournaments/{}/brackets".format(args.tournament_id)), headers = HEADERS, json = bracket)
+        print(response.status_code, response.text)
